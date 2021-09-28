@@ -36,11 +36,15 @@ $(R_MATCHES_DIR)/dat_plus_matches_study1.rda: $(R_ANALYSIS_DIR)/010_create_match
 	renv.lock
 	R -f $(R_ANALYSIS_DIR)/010_create_matched_design_study1.R
 
+$(R_MATCHES_DIR)/datasets_study1.rda: $(R_MATCHES_DIR)/dat_plus_matches_study1.rda
+
 ## Make and evaluate the matched research design for Study 2
 $(R_MATCHES_DIR)/dat_plus_matches_study2.rda: $(R_ANALYSIS_DIR)/020_create_matched_design_study2.R \
 	$(DATA_DIR)/TPL_Testing_Survey_FifthWave_YouGov_MERGEDWITHFOURTHWAVEFORMESSING.csv \
 	renv.lock
 	R -f $(R_ANALYSIS_DIR)/020_create_matched_design_study2.R
+
+$(R_MATCHES_DIR)/datasets_study2.rda: $(R_MATCHES_DIR)/dat_plus_matches_study2.rda
 
 ## Analyze outcomes for study 1
 $(R_MATCHES_DIR)/outcome_analysis_study1.rda: $(R_MATCHES_DIR)/dat_plus_matches_study1.rda \
