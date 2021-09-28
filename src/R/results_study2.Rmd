@@ -1,0 +1,366 @@
+---
+title: Report on Results for Study 2 (aka Survey 5)
+author: Jake Bowers
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  pdf_document:
+    number_sections: true
+  html_document:
+    number_sections: true
+---
+
+
+
+## The Design
+
+We created a research design where pairs of survey respondents were created so as to be nearly identical on ideology and exactly identical on PID. These pairs were also created so that the overall research design compared favorably with a pair-randomized experiment and otherwise produced extremely homogenous comparisons in terms of age, education, gender, race, partisanship, family income, and missingness on family income.
+
+```{r}
+library(here)
+source(here("src", "R", "000_constants_and_utils.R"))
+source(here("src/R", "rmd_setup.R"))
+```
+
+
+```{r}
+library(kableExtra)
+library(tidyverse)
+library(estimatr)
+library(coin)
+
+load(file = here(MATCHES_DIR, "dat_plus_matches_study2.rda"), verbose = TRUE)
+load(file = here(MATCHES_DIR, "outcome_analysis_study2.rda"))
+```
+
+Our design consists of `r nrow(dat5)` respondents placed into pairs (so we have `r nrow(dat5)/2` pairs). Is this a good research design for our question? Our main goal is to break the relationship between perceptions and potential confounders within pair --- that is, we aim to create pairs such that the person who perceives more of their family will be vaccinated is no more or less likely to be the older member of the pair (or the democrat in the pair, or the more well-educated member of the pair, etc..). Within pair comparisons of perceptions in such a design then cannot be said to be confounded by the variables that we balanced.
+
+We present a few pieces of information about our design here.
+
+First, we show balance on average. The following table shows that the pairs have nearly the same mean values on the key covariates that we aim to balance. That is, the means of the covariates are basically the same across the pairs. Not sure we want to present this as I think that within pair differences probably matter more for us.
+
+```{r simpletab}
+kable(tab[-nrow(tab), ])
+```
+
+Second, what about within-pair differences? The following table tells us that across the `r nrow(dat5)/2` pairs, half differ by less than 1 point on the 5 point ideology scale, less than 1 point on the 6 point education scale, less than 5 year of age,  and more than half of the pairs were identical in gender and race. All pairs were identical in terms of party (democrat, republican or other --- which combined independents and "other" party responses). Half have idential family income. And 90% are the same on whether or not family income was missing. The worse differences we see are 2 points difference in ideology (for 10% of pairs) and less than 10% of pairs differed by as much as 10 years of age  and a difference of 3 points on the 16 point family income scale. We think that these are quite small differences in substantive terms, and again, suggest that we have created a research design that limits the confounding effects of covariates on our targetted relationship.
+
+```{r withinpairdiffs}
+pd_means <- sapply(pair_diffs, mean)
+pd_quants <- sapply(pair_diffs, function(x) {
+  quantile(abs(x), probs = c(0, .1, .25, .5, .75, .9, 1))
+})
+
+pd_tab <- rbind(pd_quants, pd_means)
+
+kableExtra::kable(pd_tab[, -c(1, 9)], digits = 3)
+```
+
+The average of the within pair differences is shown on the bottom row of the above table. Again, we see very small differences within pair after creating this design.
+
+Third, we compare our design to an established standard: a pair-randomized experiment. If we were to randomize which member of a pair perceived more versus less vaccination in their social network, we would expect no systematic relationships between perceptions and these covariates within pairs --- across many covariates, we would see some relationships, but if we were really to randomize, we would know exactly the distribution that these differences would take. This kind of firm knowledge of a standard for an unconfounded design suggests that we compare our non-randomized design to the equivalent randomized design in the process of arguing in favor of the design. @hansenbowers2008 provide a single test to summarize the relationship between many covariates and a randomized intervention --- thus allowing us to avoid the multiple comparisons problem of looking at many different covariate tests.  That result for this design provides us with p=`r round(xbres$overall$p,2)` for the test of the hypothesis that the covariate-to-perception relationship is what we would observe in an experiment: that is, we have no strong argument against that null in this case. The subsequent table summarizes the variable-by-variable results. Again, we see that the person who is ranked as perceiving more positive health behaviors is no more or less likely to be older, etc.. That is, those covariates cannot strongly confound any comparisons we make within these pairs. The final column in the table of variable-by-variable results shows the p-values after adjusting for multiple testing using the Holm FWER adjustment.
+
+
+```{r balance}
+xbres$overall
+xbres_vars <- data.frame(xbres$results[, c("rankperc=0", "rankperc=1", "adj.diff", "std.diff", "p"), "matched"])
+xbres_vars$p_adjusted <- p.adjust(xbres_vars$p, method = "holm")
+kable(arrange(xbres_vars, p), digits = 3)
+```
+
+The above table shows that the average age of the person who perceives more vaccination intentions is, on average, about .4 of a year younger than the person who perceives fewer vaccination intentions --- but this difference is not substantively or statistically meaningful when we consider the whole research design. Similarly, we see about 12.7% of those who perceive fewer vaccination intentions to have not reported their family income whereas 11.6% reported family income among those who percieve more vaccination intention. Again, these differences are not distinguishable from those that we would see in a truly randomized experiment. This is not such an experiment, but, in regards an observational study design, it hews closely to the randomized standard.
+
+## Outcome Analysis
+
+Our analysis of outcomes is quite simple: we regress reports of respondents' own intentions to be vaccinated (or reported vaccination) on reports of those respondents' perception of such intentions in their social networks, conditional on pair. This amounts to comparing the own-intentions of the higher-perceiver within pair to the own-intentions of the lower-perceiver within pair and taking the average. We report HC2 standard errors.
+
+I am just printing out the results here in raw form. First the scales of the variables to make interpretation easier (the `q60` variables were rescaled to have a 0 point for their lowest value). The outcome is 0=not vaccinated and not definitely planning to be vaccinated, 1=vaccinated or definitely planning on it.
+
+```{r summaries}
+
+allvars_used <- unique(unlist(lapply(ls(patt = "^lm_perc"), function(x) {
+  all.vars(formula(get(x)))
+})))
+```
+
+The `q60_ingroup` and `q60_outgroup` variables exclude people who reported neither democrat nor republican partisanship.
+
+```{r}
+kableExtra::kable(summary(dat5[, allvars_used]))
+```
+
+Perceptions of vaccination intentions of others strongly predicts own intentions --- recall that we are very strongly holding constant ideology here and holding pid exactly constant:
+
+```{r vaccinationintentions}
+lm_perc_fam
+lm_perc_neigh
+lm_perc_city
+lm_perc_state
+```
+
+We also asked for perceptions of vaccination intentions by Democrats, Republicans and Independents:
+
+```{r}
+## Effect of in-group
+### Effect of perceptions of democrats among democrats
+lm_perc_dem_dem
+### Effect of perceptions of rep among rep
+lm_perc_rep_rep
+
+## Effect of out-group
+### Effect of perceptions of democrats among republicans
+lm_perc_dem_rep
+### Effect of perceptions of republicans among democrats
+lm_perc_rep_dem
+
+## Effects effect of perceptions of dems and reps among "other" group
+lm_perc_dem_ind
+lm_perc_rep_ind
+
+## Effects of perceptions of independents among dem, rep, and independents
+lm_perc_ind_dem
+lm_perc_ind_rep
+lm_perc_ind_ind
+```
+
+We could also look at the average effect of the ingroup versus outgroup, but I think the preceding results are more clear:
+
+```{r}
+## These include only democrats and republicans
+lm_perc_ingroup
+lm_perc_outgroup
+```
+
+I don't think that the main point of our short paper involves talking about differences in effects across different partisan pairs, but here is a little analysis. First, reduce the dataset to pair differences. For example, below, in bm=1, person 1 has outcome=1, and person 2 has outcome =0 (i.e. outcome=1-0=1), both are republicans, person 1 perceives more people in their family vaccinated, etc.. (i.e. q60_1a=2 2 is a positive number), etc..
+
+
+```{r}
+## To look at whether democrat pairs differ from republican pairs, we could reduce the data to pair level:
+dat5_paired <- dat5 %>%
+  group_by(bm) %>%
+  summarize(
+    outcome = diff(outcome),
+    q60_1a = diff(q60_1a),
+    q60_2a = diff(q60_2a),
+    q60_3a = diff(q60_3a),
+    q60_4a = diff(q60_4a),
+    q60_5a = diff(q60_5a),
+    q60_6a = diff(q60_6a),
+    q60_7a = diff(q60_7a),
+    q60_ingroup = diff(q60_ingroup),
+    q60_outgroup = diff(q60_outgroup),
+    pid = unique(dem_rep_oth)
+  )
+```
+
+```{r}
+kableExtra::kable(head(dat5_paired))
+```
+
+This way of looking at the data is basically the same as we did above with fixed effects for pairs. Notice the close similarity in this analysis:
+
+```{r}
+## Fixed effects version:
+lm_perc_fam
+## Pair-differenced version
+lm_robust(outcome ~ q60_1a, data = dat5_paired)
+```
+
+But now we can test for differences in effects between partisan pairs: Effect of ingroup perceptions does not differ appreciably between republicans (`pid==2`) and democrats (looking at the size of the interaction term (`q60_ingroup:I(pid == 2)TRUE`)). We do see, no surprise, that republicans are much less likely to be vaccinated (the `I(pid == 2)TRUE` term), but this is not central to our paper, so I'm not pursuing the task of statistical tests for group-differences in effects here.
+
+```{r}
+lm_robust(outcome ~ q60_ingroup * I(pid == 2), data = dat5_paired, subset = pid != 3)
+lm_robust(outcome ~ q60_outgroup * I(pid == 2), data = dat5_paired, subset = pid != 3)
+```
+
+# Sensitivity Analysis
+
+This study was not randomized, but we are making statistical inferences quantities as if it were. We know that we have some biases here, but are limited in regards our data. Although we have adjusted for some of the largest drivers of perceptions, we have not managed to control them all. How large of an unobserved effect on perceptions have to be in order to over turn our results? We present two modes of sensitivity analysis here.
+
+## Hazlett and Cinelli
+
+Our first approach builds on the approach in Cinelli and Hazlett in which they posit a linear regression model and imagine unobserved confounders. They propose a "Robustness Value" or a value of the influence of an unobserved confounder on **both** the outcome and treatment above which our substantive interpretation of our result would change. For example, we print out the results for the effect of perceptions of family below. The key piece for us is the `Robustness Value, q=1,alpha=.05`: this is the value above which we could no longer claim to detect effects (the other values are more liberal --- values that would be required to make our relationships exactly zero in magnitude).
+
+```{r}
+library(sensemakr)
+
+sens_perc_fam <- sensemakr(
+  estimate = lm_perc_fam$coef["q60_1a"],
+  se = lm_perc_fam$std.error["q60_1a"], dof = lm_perc_fam$df
+)
+summary(sens_perc_fam)
+sens_perc_fam
+```
+
+So, we would need some covariates that are unrelated the variables included in the pairing that would explain more than 20.7 % of the variation in **both** the outcome **and** perceptions in order for our statistical tests to not-reject the null of no effects.
+
+The other Robustness Values are displayed below (notice that the values of 0 are for the models where we could not reject the null of no relationship (for example, the effects of perceptions of democrats among republicans.
+
+All of the values are pretty large: what can we imagine that could predict perceptions and vaccination intention independently of all of the variables in the pairing as strongly as would be required below?
+
+```{r}
+
+get_rv_qa_value <- function(model) {
+  res <- sensemakr(
+    estimate = model$coef[1],
+    se = lm_perc_fam$std.error[1], dof = lm_perc_fam$df
+  )
+  return(res$sensitivity_stats$rv_qa)
+}
+
+lms <- ls(patt = "^lm_perc")
+lms <- lms[grep("rank", lms, invert = TRUE)]
+robustness_values <- sapply(lms, function(lmname) {
+  get_rv_qa_value(get(lmname))
+})
+
+sort(robustness_values, decreasing = TRUE)
+```
+
+
+## Rosenbaum Style
+
+Paul Rosenbaum developed an approach to sensitivity analysis that Hazlett and Cinelli build on. It involves positing an unobserved factor that, within pair, changes the probability of "selection into treatment" away from uniform. Our "treatment" variable here has 7 categories, so we change the analysis a bit here: the question becomes whether the person who perceives more within a pair (rank of perceptions = 1) also tends to be the person with more positive vaccination intentions. In this formulation, if two people do not differ in perceptions, then this pair adds nothing to the analysis and they are dropped.
+
+```{r}
+dat5 <- dat5 %>%
+  group_by(bm) %>%
+  mutate(
+    q60_1a_rank = rank(q60_1a) - 1,
+    q60_2a_rank = rank(q60_2a) - 1,
+    q60_3a_rank = rank(q60_3a) - 1,
+    q60_4a_rank = rank(q60_4a) - 1,
+    q60_5a_rank = rank(q60_5a) - 1,
+    q60_6a_rank = rank(q60_6a) - 1,
+    q60_7a_rank = rank(q60_7a) - 1
+  ) %>%
+  ungroup()
+
+## Notice that sometimes the higher perceiver has a 1 and sometimes a 6 (mostly higher numbers of course).
+with(dat5, table(q60_1a_rank, q60_1a, exclude = c()))
+
+lm_perc_fam_rank <- lm_robust(outcome ~ q60_1a_rank, fixed_effects = ~bm, data = dat5)
+lm_perc_neigh_rank <- lm_robust(outcome ~ q60_2a_rank, fixed_effects = ~bm, data = dat5)
+lm_perc_city_rank <- lm_robust(outcome ~ q60_3a_rank, fixed_effects = ~bm, data = dat5)
+lm_perc_state_rank <- lm_robust(outcome ~ q60_4a_rank, fixed_effects = ~bm, data = dat5)
+## Do perceptions of Democrats or Republicans matter differently for Democrats/Republicans?
+## dem_rep_oth: 1=dem, 2=rep,3=other (indep, dk, other)
+lm_perc_dem_dem_rank <- lm_robust(outcome ~ q60_5a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 1)
+lm_perc_dem_rep_rank <- lm_robust(outcome ~ q60_5a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 2)
+lm_perc_dem_ind_rank <- lm_robust(outcome ~ q60_5a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 3)
+lm_perc_rep_dem_rank <- lm_robust(outcome ~ q60_6a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 1)
+lm_perc_rep_rep_rank <- lm_robust(outcome ~ q60_6a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 2)
+lm_perc_rep_ind_rank <- lm_robust(outcome ~ q60_6a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 3)
+lm_perc_ind_dem_rank <- lm_robust(outcome ~ q60_7a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 1)
+lm_perc_ind_rep_rank <- lm_robust(outcome ~ q60_7a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 2)
+lm_perc_ind_ind_rank <- lm_robust(outcome ~ q60_7a_rank, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 3)
+
+## These are just to help us understand the results below:
+## the pattern of estimates and statistical tests should be the same as when we use the full scale
+lm_rank_res_lst <- lapply(ls(patt = "_rank$"), function(lmnm) {
+  res <- tidy(get(lmnm))
+  res$model <- lmnm
+  return(res)
+})
+lm_rank_res <- bind_rows(lm_rank_res_lst) %>%
+  select(term, estimate, p.value, conf.low, conf.high, model) %>%
+  mutate(across(where(is.numeric), round, 3)) %>%
+  arrange(p.value)
+lm_rank_res
+```
+
+```{r}
+
+## here is the p-value with no bias
+find_gamma_lim(g = 1, y = "outcome", z = "q60_1a_rank", dat = dat5, return = "all")$pval
+lm_perc_fam_rank ## notice basically same
+## Some issues with uniroot whtn p>.05
+find_gamma_lim(g = 1, y = "outcome", z = "q60_5a_rank", dat = dat5, return = "all")
+## Now find the Gamma (or size of the selection effect) required to drive p>=.05
+sens_perc_fam_G <- uniroot(f = find_gamma_lim, z = "q60_1a_rank", y = "outcome", dat = dat5, lower = 1, upper = 20)
+sens_perc_fam_G$root
+## Here is the Gamma value: the covariate has to cause the person to be 4 times more likely to be the higher perceiver within the same pair
+## Maximum treatment odds ration between higher and lower person within set.
+## Showing the the pvalue is .0501 in this case
+find_gamma_lim(g = sens_perc_fam_G$root, z = "q60_1a_rank", y = "outcome", dat = dat5, return = "all")$pval
+
+
+find_gamma_lim(g = 1, z = "q60_6a_rank", y = "outcome", dat = filter(dat5, dem_rep_oth == 2), return = "all")$pval
+find_gamma_lim(g = 1, z = "q60_5a_rank", y = "outcome", dat = filter(dat5, dem_rep_oth == 1), return = "all")$pval
+
+## Now for the other variables
+gamma_vals <- sapply(grep("^q60_[0-9]a.*_rank", names(dat5), value = TRUE), function(nm) {
+  message(nm)
+  if (nm == "q60_5a_rank") { ## Perceptions of Democrats only potentially non zero among Dems
+    res_G <- try(uniroot(f = find_gamma_lim, z = nm, y = "outcome", dat = filter(dat5, dem_rep_oth == 1), lower = 1, upper = 20), silent = TRUE)
+  }
+  if (nm == "q60_6a_rank") { ## Perceptions of Reps only non zero among Reps
+    res_G <- try(uniroot(f = find_gamma_lim, z = nm, y = "outcome", dat = filter(dat5, dem_rep_oth == 2), lower = 1, upper = 20), silent = TRUE)
+  }
+  if (!(nm %in% c("q60_5a_rank", "q60_6a_rank"))) {
+    res_G <- try(uniroot(f = find_gamma_lim, z = nm, y = "outcome", dat = dat5, lower = 1, upper = 20), silent = TRUE)
+  }
+  if (inherits(x = res_G, "try-error")) {
+    res_G$root <- NA
+  }
+  return(res_G$root)
+})
+sort(gamma_vals, decreasing = TRUE, na.last = TRUE)
+```
+
+Notice that the stronger the relationship, the larger the bias required to drive the p-value above .05. Strongest effect is family, for example.
+
+Helping to interpret these gamma values
+
+```{r}
+
+amps <- lapply(gamma_vals, function(theg) {
+  if (is.na(theg)) {
+    return(NA)
+  }
+  message(theg)
+  my_amplify(theg, lambda = seq(theg + .001, 10))
+})
+names(amps) <- names(gamma_vals)
+
+
+amps_min <- sapply(amps[!is.na(amps)], function(mat) {
+  mat[2, ]
+})
+## We are not looking at Independents because they are to heterogeneous
+## So only consider q60_1 to 6 (not 7).
+## The 4a result arises from using ranks (p=.08). So excluding that one too.
+amps_min[, c("q60_1a_rank", "q60_2a_rank", "q60_3a_rank", "q60_6a_rank")]
+```
+
+The p-value that we see for a given $\Gamma$ (like `r
+gamma_vals[[1]]`)  can be produced from an unobserved covariate that
+increases the treatment odds (within all pairs) by lambda and
+increases the odds of a positive pair difference in outcomes by
+delta. So, if we had such a covariate that increases the odds of
+being the higher perceiver by about 9 it would also have to increase
+the odds of own vaccination intention by about 4.4 in order to yield
+a p-value of .051.
+
+# Relationships with Correlations
+
+
+```{r}
+
+## among dems, perceptions of dems
+with(dat5[dat5$dem_rep_oth == 1, ], cor(outcome, q60_5a))
+## among reps, perceptions of dems
+with(dat5[dat5$dem_rep_oth == 2, ], cor.test(outcome, q60_5a))
+
+## among dems, perceptions of reps
+with(dat5[dat5$dem_rep_oth == 1, ], cor.test(outcome, q60_6a))
+
+## among reps, perceptions of reps
+with(dat5[dat5$dem_rep_oth == 2, ], cor(outcome, q60_6a))
+
+lm_robust(outcome ~ q60_5a * I(dem_rep_oth == 1), data = dat5, subset = dem_rep_oth != 3)
+lm_robust(outcome ~ q60_5a, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 1)
+lm_robust(outcome ~ q60_5a, fixed_effects = ~bm, data = dat5, subset = dem_rep_oth == 2)
+```
+
+
+# References

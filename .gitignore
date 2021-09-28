@@ -1,0 +1,15 @@
+# Python cruft
+/.mypy_cache
+/.pytest_cache
+/.venv
+__pycache__
+/dist
+
+# Editor cruft
+.vscode
+*~
+.*.swp
+.Rproj.user
+
+# Computed data
+data/calculated
