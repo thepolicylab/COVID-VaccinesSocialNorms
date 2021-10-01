@@ -30,9 +30,13 @@ library(coin)
 
 load(file = here(MATCHES_DIR, "dat_plus_matches_study2.rda"), verbose = TRUE)
 load(file = here(MATCHES_DIR, "outcome_analysis_study2.rda"))
+load(file = here(MATCHES_DIR, "datasets_study2.rda"))
 ```
 
 Our design consists of `r nrow(dat5)` respondents placed into pairs (so we have `r nrow(dat5)/2` pairs). Is this a good research design for our question? Our main goal is to break the relationship between perceptions and potential confounders within pair --- that is, we aim to create pairs such that the person who perceives more of their family will be vaccinated is no more or less likely to be the older member of the pair (or the democrat in the pair, or the more well-educated member of the pair, etc..). Within pair comparisons of perceptions in such a design then cannot be said to be confounded by the variables that we balanced.
+
+The total sample size of the data that we used for the matching process was: `r
+nrow(dat3)`
 
 We present a few pieces of information about our design here.
 
