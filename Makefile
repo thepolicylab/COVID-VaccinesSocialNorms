@@ -69,7 +69,7 @@ $(R_FIGURES_DIR)/study1_coefplot_vax.pdf: $(R_ANALYSIS_DIR)/study1_coefplot_fig.
 	$(R_MATCHES_DIR)/outcome_analysis_study1.rda
 	R -f $(R_ANALYSIS_DIR)/study1_coefplot_fig.R
 
-$(R_FIGURES_DIR)/study1_coefplot_other.pdf: $(R_ANALYSIS_DIR)/study1_coefplot_vax.pdf
+$(R_FIGURES_DIR)/study1_coefplot_other.pdf: $(R_FIGURES_DIR)/study1_coefplot_vax.pdf
 
 $(R_FIGURES_DIR)/study2_coefplot_vax.pdf: $(R_ANALYSIS_DIR)/study2_coefplot_fig.R \
 	$(R_MATCHES_DIR)/outcome_analysis_study2.rda
@@ -118,6 +118,17 @@ $(R_OUTPUT_DIR)/risk_res_study2.docx: $(R_ANALYSIS_DIR)/risk_perc_table_study2.R
 
 $(R_OUTPUT_DIR)/vaxrisk_res_study2.docx: $(R_OUTPUT_DIR)/risk_res_study2.docx
 $(R_OUTPUT_DIR)/vaxrisk_inv_res_study2.docx: $(R_OUTPUT_DIR)/risk_res_study2.docx
+
+## Data used in results
+
+$(R_DATA_DIR)/study1_dat_plus_matches_dat3.csv: $(R_ANALYSIS_DIR)/000_constants_and_utils.R \
+	$(R_ANALYSIS_DIR)/rmd_setup.R \
+	$(R_MATCHES_DIR)/outcome_analysis_study2.rda \
+	$(R_MATCHES_DIR)/outcome_analysis_study1.rda \
+	$(R_ANALYSIS_DIR)/extract_post_matching_data.R
+	R -f $(R_ANALYSIS_DIR)/extract_post_matching_data.R
+
+$(R_DATA_DIR)/study1_dat_plus_matches_dat5.csv: $(R_DATA_DIR)/study1_dat_plus_matches_dat3.csv
 
 ## An image of the makefile
 
