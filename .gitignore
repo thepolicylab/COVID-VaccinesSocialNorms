@@ -13,3 +13,7 @@ __pycache__
 
 # Computed data
 data/calculated
+
+# OS cruft
+build/.DS_Store
+data/.DS_Store
