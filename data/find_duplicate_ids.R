@@ -147,29 +147,70 @@ dat6 %>% filter(orig_id==1264497677) %>% select(orig_id,bm,survey,which_caseid,c
 dec_dat1 %>% filter(caseid_15==1264497677)
 dat6 %>% filter(bm==1) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
 
+## This person was repeated in the main data:
+dat0 %>% filter(caseid %in% c(1264497677,1297595061)) %>%
+    select(caseid,caseid_14,survey,birthyr,gender,race,pid3)
+
 ## orig_id  1297706273 is from December (caseid_16), and has the
 ## id of 1264877677 for november (caseid_15)
 dat6 %>% filter(orig_id==1297706273) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
 dec_dat1 %>% filter(caseid_16==1297706273)
 dat6 %>% filter(bm==358) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
 
+## This person was also repeated in the main data:
+dat0 %>% filter(caseid %in% c(1297706273,1264877677)) %>%
+    select(caseid,caseid_14,survey,birthyr,gender,race,pid3)
+
+
 dat6 %>% filter(which_caseid==15)  %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
 dat6 %>% filter(which_caseid==16)  %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
 
 dat7 <- dat6 %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
 
+## Person orig_id=1264521923 had that same id in november, but in december had
+## id 1298218639
+dat6 %>% filter(orig_id==1264521923) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
+dec_dat1 %>% filter(caseid_16==1298218639)
+dat6 %>% filter(bm==2) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
 
-## Do we ever see a pair where both members are the same person
-### Is orig_id the same as caseid_15 when survey is 16? or same as caseid_16
-### when survey is 15? (no)
+## This person was also repeated in the main data:
+dat0 %>% filter(caseid %in% c(1264521923,1298218639)) %>%
+    select(caseid,caseid_14,survey,birthyr,gender,race,pid3)
 
-within_person_match <- dat7 %>% group_by(bm) %>% filter(caseid_15[1]==caseid_16[2] | caseid_15[2]==caseid_16[1])
-stopifnot(nrow(within_person_match)==0)
+dat7
 
-## Did we ever repeat the same person but across different pairs?
-
-## Testing whether I can really access different entries within a set:
+## Testing whether I can really access different entries within a set using the
+## [1] and [2] indexing
 testdat <- dat7 %>% group_by(bm) %>% summarize(test=caseid_15[1]-caseid_15[2]) %>% filter(!is.na(test))
 test2 <- filter(dat7,bm==9) %>% summarize(test2=caseid_15[orig_id==1264629649] - caseid_15[orig_id==1265767537])
 test1 <- testdat %>% filter(bm==9) %>% select(test)
 stopifnot(test2$test2==test1$test)
+
+## Do we ever see a pair where both members are the same person
+### Is orig_id the same as caseid_15 when survey is 16? or same as caseid_16
+### when survey is 15? (no)
+within_person_match <- dat7 %>% group_by(bm) %>% filter(caseid_15[1]==caseid_16[2] | caseid_15[2]==caseid_16[1])
+stopifnot(nrow(within_person_match)==0)
+
+## Did we ever repeat the same person but across different pairs?
+## Example: orig_id=1264497677 (which is the Novermber, survey=5, or caseid_15) is
+## associated with caseid_16=1297595061 (december). If 1297595061 shows up as an
+## orig_id for survey!=5, then we know a person has been repeated.
+
+
+## Notice the in general orig_id==caseid_15 for the first survey and
+## orig_id==caseid_16 for the december survey
+with(dat7 %>% filter(survey==5 & !is.na(caseid_15)), table(orig_id==caseid_15,exclude=c()))
+with(dat7 %>% filter(survey==8 & !is.na(caseid_16)), table(orig_id==caseid_16,exclude=c()))
+
+## And neither are used for survey=7
+with(dat7,table(survey,is.na(caseid_15)))
+with(dat7,table(survey,is.na(caseid_16)))
+
+## The question is whether orig_id is caseid_16 in survey=5 or caseid_15 in
+## survey=8
+with(dat7 %>% filter(survey==5 & !is.na(caseid_16)), orig_id %in% caseid_16)
+with(dat7 %>% filter(survey==5 & !is.na(caseid_16)), intersect(orig_id,caseid_16))
+
+with(dat7 %>% filter(survey==8 & !is.na(caseid_15)), orig_id %in% caseid_15)
+with(dat7 %>% filter(survey==8 & !is.na(caseid_15)), intersect(orig_id,caseid_15))
