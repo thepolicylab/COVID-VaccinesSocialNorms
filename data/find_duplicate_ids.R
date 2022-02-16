@@ -89,14 +89,6 @@ table(dat3_thin$some_match,dat3_thin$survey,exclude=c())
 ## We never have orig_id matching **both** caseid_15 and caseid_16
 with(dat3_thin,table(orig_id_is_caseid_15,orig_id_is_caseid_16,exclude=c()))
 
-## ## Focus attentin only on those with caseids in the csv file
-## dat4 <- dat3_thin %>% filter(some_match)
-## dat4
-## table(dat4$survey,exclude=c())
-## dat4$some_match <- NULL ## by definition all TRUE
-## with(dat4,table(orig_id_is_caseid_15,orig_id_is_caseid_16,exclude=c()))
-## with(dat3_thin,table(orig_id_is_caseid_15,orig_id_is_caseid_16,exclude=c()))
-
 ## Make it easier to look at by collapsing the orig_id_is_caseid.. vars into one
 ## column.
 dat3_thin$which_caseid <- with(dat3_thin,
@@ -106,9 +98,95 @@ dat3_thin$which_caseid <- with(dat3_thin,
 ## No surprise that the caseids match the surveys
 with(dat3_thin,table(survey,which_caseid,exclude=c()))
 
+## Remove those columns just to make it easier to look at
+dat3_thin$orig_id_is_caseid_15 <- NULL
+dat3_thin$orig_id_is_caseid_16 <- NULL
+
+## add a column to dat3_thin recording whether orig_id was for nov or dec
+dat3_thin$caseid_nov <- ifelse(dat3_thin$orig_id %in% dec_dat1$caseid_15,dat3_thin$orig_id,NA)
+dat3_thin$caseid_dec <- ifelse(dat3_thin$orig_id %in% dec_dat1$caseid_16,dat3_thin$orig_id,NA)
+
+dat3_thin
+
+## Now fill in the missing caseids:
+## If caseid_nov not missing but we don't have a caseid_dec for that person,
+## fill in caseid_dec with the caseid_16 from the csv file, otherwise don't change
+## caseid_dec. (And same for caseid_nov when we don't have one recorded in the
+## dat3_thin file which also contains the matched set indicators)
+
+dat5 <- left_join(dat3_thin,
+    dec_dat1 %>% select(caseid_15,caseid_16),by=c("orig_id"="caseid_16")) %>%
+    arrange(bm)
+
+dat6 <- left_join(dat5,
+    dec_dat1 %>% select(caseid_15,caseid_16),by=c("orig_id"="caseid_15")) %>%
+    arrange(bm)
+
+dat6
+dat6 %>% filter(which_caseid==15)
+dat6 %>% filter(which_caseid==16)
+
+dat6 <- dat6 %>% mutate(caseid_nov=ifelse(is.na(caseid_nov),caseid_15,caseid_nov),
+    caseid_dec=ifelse(is.na(caseid_dec),caseid_16,caseid_dec))
+
+dat6
+dat6 %>% filter(which_caseid==15)
+dat6 %>% filter(which_caseid==16)
+
+START HERE
+
+### Check things:
+## orig_id 1264497677  is from November (caseid_15), and has the
+## id of 1297595061 for december (caseid_16)
+## which_caseid==15.
+dat6 %>% filter(orig_id==1264497677)
+dec_dat1 %>% filter(caseid_15==1264497677)
+dat6 %>% filter(bm==1)
+
+## I checked the above by hand. Now using code. Ignore names
+test_caseid_novs <- sample(dat6$caseid_nov[!is.na(dat6$caseid_nov)],5)
+
+test_csv_dat <- dec_dat1 %>% filter(caseid_15 %in% test_caseid_novs) %>% select(caseid_15,caseid_16) %>% arrange(caseid_15)
+test_dat6_dat <- dat6 %>% filter(caseid_nov %in% test_caseid_novs) %>% select(caseid_nov,caseid_dec) %>% arrange(caseid_nov)
+stopifnot(all.equal(test_csv_dat,test_dat6_dat,
+        check.attributes=FALSE))
+
+## orig_id  1297706273 is from December (caseid_16), and has the
+## id of 1264877677 for november (caseid_15)
+dat6 %>% filter(orig_id==1297706273)
+dec_dat1 %>% filter(caseid_16==1297706273)
+dat6 %>% filter(bm==358)
+stopifnot(all.equal(dec_dat1 %>% filter(caseid_16==1297706273) %>% select(caseid_15,caseid_16),
+        dat6 %>% filter(caseid_dec==1297706273) %>% select(caseid_nov,caseid_dec),
+        check.attributes=FALSE))
+
+
+
+
+
+
+
+
+
+
+## If caseid_nov not missing but we don't have a caseid_dec for that person,
+## fill in caseid_dec with the caseid_16 from the csv file, otherwise don't change
+## caseid_dec. (And same for caseid_nov when we don't have one recorded in the
+## dat3_thin file which also contains the matched set indicators)
+##dat3_thin$caseid_dec <- with(dat3_thin,ifelse(!is.na(caseid_nov)&is.na(caseid_dec),
+##        dec_dat1$caseid_16[match(caseid_nov[!is.na(caseid_nov)&is.na(caseid_dec)],dec_dat1$caseid_15)],caseid_dec))
+##dat3_thin$caseid_nov <- with(dat3_thin,ifelse(!is.na(caseid_dec)&is.na(caseid_nov),
+##        dec_dat1$caseid_15[match(caseid_dec[!is.na(caseid_dec)&is.na(caseid_nov)],dec_dat1$caseid_16)],caseid_nov))
+##
+##dat3_thin
+##
+##dat3_thin %>% filter(which_caseid==15)
+##dat3_thin %>% filter(which_caseid==16)
+
+
 ## We want to know the different caseids represented within each pair.
 ### So first add the caseids where orig_id is the same as caseid_16
-dat5 <- left_join(dat3_thin %>% select(orig_id,bm,survey,which_caseid,some_match),
+dat5 <- left_join(dat3_thin,
     dec_dat1,by=c("orig_id"="caseid_16")) %>%
     arrange(bm) %>%
     mutate(caseid_16_csv=ifelse(which_caseid==16,orig_id,NA), ## to be clear, on dat5, orig_id and caseid_16 are the same
@@ -116,6 +194,9 @@ dat5 <- left_join(dat3_thin %>% select(orig_id,bm,survey,which_caseid,some_match
 
 dat5 %>% filter(orig_id==1297706273)
 dec_dat1 %>% filter(caseid_16==1297706273)
+
+dat5 %>% filter(orig_id==1264497677)
+dec_dat1 %>% filter(caseid_15==1264497677)
 
 dat5
 dat5 %>% filter(which_caseid==15)
