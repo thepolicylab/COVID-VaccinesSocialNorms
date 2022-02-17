@@ -88,9 +88,10 @@ table(dat3_thin$some_match,dat3_thin$survey,exclude=c())
 
 ## We never have orig_id matching **both** caseid_15 and caseid_16
 with(dat3_thin,table(orig_id_is_caseid_15,orig_id_is_caseid_16,exclude=c()))
+stopifnot(with(dat3_thin,any(orig_id_is_caseid_15!=orig_id_is_caseid_16)))
 
 ## Make it easier to look at by collapsing the orig_id_is_caseid.. vars into one
-## column.
+## column recording where the orig_id matched.
 dat3_thin$which_caseid <- with(dat3_thin,
     case_when(orig_id_is_caseid_16~16,
         orig_id_is_caseid_15~15))
@@ -102,7 +103,7 @@ with(dat3_thin,table(survey,which_caseid,exclude=c()))
 dat3_thin$orig_id_is_caseid_15 <- NULL
 dat3_thin$orig_id_is_caseid_16 <- NULL
 
-## add a column to dat3_thin recording whether orig_id was for nov or dec
+## add a column to dat3_thin recording the caseid that the orig_id matched
 dat3_thin$caseid_nov <- ifelse(dat3_thin$orig_id %in% dec_dat1$caseid_15,dat3_thin$orig_id,NA)
 dat3_thin$caseid_dec <- ifelse(dat3_thin$orig_id %in% dec_dat1$caseid_16,dat3_thin$orig_id,NA)
 
@@ -114,184 +115,145 @@ dat3_thin
 ## caseid_dec. (And same for caseid_nov when we don't have one recorded in the
 ## dat3_thin file which also contains the matched set indicators)
 
-dat5 <- left_join(dat3_thin,
-    dec_dat1 %>% select(caseid_15,caseid_16),by=c("orig_id"="caseid_16")) %>%
-    arrange(bm)
+dat4 <- left_join(dat3_thin,
+    dec_dat1 %>% select(caseid_15,caseid_16),
+    by=c("orig_id"="caseid_16")) %>%
+    arrange(bm)  %>%
+    mutate(caseid_16=ifelse(is.na(caseid_nov),orig_id,caseid_dec),
+        caseid_nov=ifelse(is.na(caseid_nov),caseid_15,caseid_nov))
 
-dat6 <- left_join(dat5,
-    dec_dat1 %>% select(caseid_15,caseid_16),by=c("orig_id"="caseid_15")) %>%
-    arrange(bm)
+dat4
+dat4 %>% filter(which_caseid==15)
+dat4 %>% filter(which_caseid==16)
 
-dat6
-dat6 %>% filter(which_caseid==15)
-dat6 %>% filter(which_caseid==16)
-
-dat6 <- dat6 %>% mutate(caseid_nov=ifelse(is.na(caseid_nov),caseid_15,caseid_nov),
-    caseid_dec=ifelse(is.na(caseid_dec),caseid_16,caseid_dec))
-
-dat6
-dat6 %>% filter(which_caseid==15)
-dat6 %>% filter(which_caseid==16)
-
-START HERE
-
-### Check things:
-## orig_id 1264497677  is from November (caseid_15), and has the
-## id of 1297595061 for december (caseid_16)
-## which_caseid==15.
-dat6 %>% filter(orig_id==1264497677)
+dec_dat1 %>% filter(caseid_16==1298731269)
+dat4 %>% filter(caseid_dec==1298731269)
 dec_dat1 %>% filter(caseid_15==1264497677)
-dat6 %>% filter(bm==1)
+dat4 %>% filter(orig_id==1264497677)
 
-## I checked the above by hand. Now using code. Ignore names
-test_caseid_novs <- sample(dat6$caseid_nov[!is.na(dat6$caseid_nov)],5)
-
-test_csv_dat <- dec_dat1 %>% filter(caseid_15 %in% test_caseid_novs) %>% select(caseid_15,caseid_16) %>% arrange(caseid_15)
-test_dat6_dat <- dat6 %>% filter(caseid_nov %in% test_caseid_novs) %>% select(caseid_nov,caseid_dec) %>% arrange(caseid_nov)
-stopifnot(all.equal(test_csv_dat,test_dat6_dat,
-        check.attributes=FALSE))
-
-## orig_id  1297706273 is from December (caseid_16), and has the
-## id of 1264877677 for november (caseid_15)
-dat6 %>% filter(orig_id==1297706273)
-dec_dat1 %>% filter(caseid_16==1297706273)
-dat6 %>% filter(bm==358)
-stopifnot(all.equal(dec_dat1 %>% filter(caseid_16==1297706273) %>% select(caseid_15,caseid_16),
-        dat6 %>% filter(caseid_dec==1297706273) %>% select(caseid_nov,caseid_dec),
-        check.attributes=FALSE))
-
-
-
-
-
-
-
-
-
-
-## If caseid_nov not missing but we don't have a caseid_dec for that person,
-## fill in caseid_dec with the caseid_16 from the csv file, otherwise don't change
-## caseid_dec. (And same for caseid_nov when we don't have one recorded in the
-## dat3_thin file which also contains the matched set indicators)
-##dat3_thin$caseid_dec <- with(dat3_thin,ifelse(!is.na(caseid_nov)&is.na(caseid_dec),
-##        dec_dat1$caseid_16[match(caseid_nov[!is.na(caseid_nov)&is.na(caseid_dec)],dec_dat1$caseid_15)],caseid_dec))
-##dat3_thin$caseid_nov <- with(dat3_thin,ifelse(!is.na(caseid_dec)&is.na(caseid_nov),
-##        dec_dat1$caseid_15[match(caseid_dec[!is.na(caseid_dec)&is.na(caseid_nov)],dec_dat1$caseid_16)],caseid_nov))
-##
-##dat3_thin
-##
-##dat3_thin %>% filter(which_caseid==15)
-##dat3_thin %>% filter(which_caseid==16)
-
-
-## We want to know the different caseids represented within each pair.
-### So first add the caseids where orig_id is the same as caseid_16
-dat5 <- left_join(dat3_thin,
-    dec_dat1,by=c("orig_id"="caseid_16")) %>%
-    arrange(bm) %>%
-    mutate(caseid_16_csv=ifelse(which_caseid==16,orig_id,NA), ## to be clear, on dat5, orig_id and caseid_16 are the same
-        caseid_16=ifelse(which_caseid==16,orig_id,NA))
-
-dat5 %>% filter(orig_id==1297706273)
-dec_dat1 %>% filter(caseid_16==1297706273)
-
-dat5 %>% filter(orig_id==1264497677)
-dec_dat1 %>% filter(caseid_15==1264497677)
+dat5 <- left_join(dat4,
+    dec_dat1 %>% select(caseid_15,caseid_16),
+    by=c("orig_id"="caseid_15"),
+    suffix=c("_dat4","_csv")) %>%
+    arrange(bm)  %>%
+    mutate(caseid_15=ifelse(is.na(caseid_dec)&is.na(caseid_15),orig_id,caseid_nov),
+    caseid_nov=ifelse(is.na(caseid_nov),caseid_15,caseid_nov),
+    caseid_dec=ifelse(is.na(caseid_dec),caseid_16_csv,caseid_dec))
 
 dat5
 dat5 %>% filter(which_caseid==15)
 dat5 %>% filter(which_caseid==16)
 
-## Then add the caseids for which orig_id is caseid_15
-dat6 <- left_join(dat5,dec_dat1,by=c("orig_id"="caseid_15"),suffix = c("_1","_2")) %>%
-    arrange(bm) %>%
-    mutate(caseid_15_csv=ifelse(which_caseid==15,orig_id,NA), ## to be clear, on dat6, orig_id and caseid_15 are the same
-        caseid_15=ifelse(which_caseid==15 & is.na(caseid_15),orig_id,caseid_15),
-    caseid_16=ifelse(which_caseid==15,caseid_16_2,caseid_16_1),
-    caseid_13=ifelse(which_caseid==15,caseid_13_2,caseid_13_1),
-    caseid_14=ifelse(which_caseid==15,caseid_14_2,caseid_14_1),
-    )
+## Before replacing caseid_dec when missing with caseid_16_csv, check to make
+## sure that whenever caseid_16_csv is missing, caseid_16_dat4 is not missing.
+stopifnot(dat5 %>% filter(which_caseid==16) %>%  with(.,any(is.na(caseid_16_csv)&!is.na(caseid_16_dat4))))
 
-## make sure we didn't drop anyone used in the matching
-stopifnot(all.equal(nrow(dat6),nrow(dat3_thin)))
-## Also, make sure we didn't change anything about the matched set orig_ids --- just adding
-## columns
-all.equal(dat6$orig_id,dat3_thin$orig_id)
-## Make sure we didn't break any pairs
-stopifnot(unique(table(dat6$bm))==2)
+dat5 <- dat5 %>% mutate() %>% select(-c(caseid_16_csv,caseid_16_dat4,caseid_15))
 
-dat6
+dat5
+dat5 %>% filter(which_caseid==15)
+dat5 %>% filter(which_caseid==16)
+
+### Check things: First just look at two cases.
 ## orig_id 1264497677  is from November (caseid_15), and has the
 ## id of 1297595061 for december (caseid_16)
 ## which_caseid==15.
-dat6 %>% filter(orig_id==1264497677) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
+dat5 %>% filter(orig_id==1264497677)
 dec_dat1 %>% filter(caseid_15==1264497677)
-dat6 %>% filter(bm==1) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
+dat5 %>% filter(bm==1)
 
-## This person was repeated in the main data:
-dat0 %>% filter(caseid %in% c(1264497677,1297595061)) %>%
-    select(caseid,caseid_14,survey,birthyr,gender,race,pid3)
 
 ## orig_id  1297706273 is from December (caseid_16), and has the
 ## id of 1264877677 for november (caseid_15)
-dat6 %>% filter(orig_id==1297706273) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
+dat5 %>% filter(orig_id==1297706273)
 dec_dat1 %>% filter(caseid_16==1297706273)
-dat6 %>% filter(bm==358) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
+dat5 %>% filter(bm==358)
+stopifnot(all.equal(dec_dat1 %>% filter(caseid_16==1297706273) %>% select(caseid_15,caseid_16),
+        dat5 %>% filter(caseid_dec==1297706273) %>% select(caseid_nov,caseid_dec),
+        check.attributes=FALSE))
 
-## This person was also repeated in the main data:
-dat0 %>% filter(caseid %in% c(1297706273,1264877677)) %>%
-    select(caseid,caseid_14,survey,birthyr,gender,race,pid3)
+## Everybody has at least one caseid_nov and one caseid_dec
+stopifnot( all( apply(dat5[,c("caseid_nov","caseid_dec"),],1,function(x){ any(!is.na(x)) }) ) )
 
+test_dat5_dat <- dat5 %>% filter(some_match & !is.na(caseid_nov)) %>% sample_n(10) %>% 
+    select(caseid_nov,caseid_dec) %>%
+    arrange(caseid_nov)
 
-dat6 %>% filter(which_caseid==15)  %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
-dat6 %>% filter(which_caseid==16)  %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
+## I checked the above by hand. Now using code. Ignore names
+## not using a seed because this should have worked regardless of who is chosen
+test_csv_dat <- dec_dat1 %>% filter(caseid_15 %in% test_dat5_dat$caseid_nov[!is.na(test_dat5_dat$caseid_nov)]  |
+    caseid_16 %in% test_dat5_dat$caseid_dec) %>% select(caseid_15,caseid_16) %>% arrange(caseid_15)
+test_csv_dat
 
-dat7 <- dat6 %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
+stopifnot(all.equal(test_csv_dat,test_dat5_dat,
+        check.attributes=FALSE))
 
-## Person orig_id=1264521923 had that same id in november, but in december had
-## id 1298218639
-dat6 %>% filter(orig_id==1264521923) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
-dec_dat1 %>% filter(caseid_16==1298218639)
-dat6 %>% filter(bm==2) %>% select(orig_id,bm,survey,which_caseid,caseid_15,caseid_16,caseid_13,caseid_14)
+#### Ok. The merging worked. Now, we are going to compare people within pairs.
 
-## This person was also repeated in the main data:
-dat0 %>% filter(caseid %in% c(1264521923,1298218639)) %>%
-    select(caseid,caseid_14,survey,birthyr,gender,race,pid3)
-
-dat7
-
-## Testing whether I can really access different entries within a set using the
+## First, Testing whether I can really access different entries within a set using the
 ## [1] and [2] indexing
-testdat <- dat7 %>% group_by(bm) %>% summarize(test=caseid_15[1]-caseid_15[2]) %>% filter(!is.na(test))
-test2 <- filter(dat7,bm==9) %>% summarize(test2=caseid_15[orig_id==1264629649] - caseid_15[orig_id==1265767537])
+testdat <- dat5 %>% group_by(bm) %>% summarize(test=caseid_nov[1]-caseid_nov[2]) %>% filter(!is.na(test))
+test2 <- dat5 %>% summarize(test2=caseid_nov[orig_id==1264629649] - caseid_nov[orig_id==1265767537])
 test1 <- testdat %>% filter(bm==9) %>% select(test)
 stopifnot(test2$test2==test1$test)
 
 ## Do we ever see a pair where both members are the same person
-### Is orig_id the same as caseid_15 when survey is 16? or same as caseid_16
-### when survey is 15? (no)
-within_person_match <- dat7 %>% group_by(bm) %>% filter(caseid_15[1]==caseid_16[2] | caseid_15[2]==caseid_16[1])
+### Is orig_id the same as caseid_nov when survey is 16? or same as caseid_dec
+### when survey is 15? (no) (same result when looking at whether orig_id of
+### person 1 same as any id for person 2 and vice-versa)
+within_person_match <- dat5 %>% group_by(bm) %>% filter(caseid_nov[1]==caseid_dec[2] | caseid_nov[2]==caseid_dec[1])
 stopifnot(nrow(within_person_match)==0)
+within_person_match_2 <- dat5 %>% group_by(bm) %>% filter(orig_id[1]==caseid_nov[2] | orig_id[2]==caseid_nov[1] |
+    orig_id[1]==caseid_dec[2] | orig_id[2]==caseid_dec[1])
+stopifnot(nrow(within_person_match_2)==0)
 
-## Did we ever repeat the same person but across different pairs?
-## Example: orig_id=1264497677 (which is the Novermber, survey=5, or caseid_15) is
-## associated with caseid_16=1297595061 (december). If 1297595061 shows up as an
+
+## Did we ever repeat the same person but **across** different pairs?
+## Example: orig_id=1264497677 (which is the Novermber, survey=5, or caseid_nov) is
+## associated with caseid_dec=1297595061 (december). If 1297595061 shows up as an
 ## orig_id for survey!=5, then we know a person has been repeated.
 
 
-## Notice the in general orig_id==caseid_15 for the first survey and
-## orig_id==caseid_16 for the december survey
-with(dat7 %>% filter(survey==5 & !is.na(caseid_15)), table(orig_id==caseid_15,exclude=c()))
-with(dat7 %>% filter(survey==8 & !is.na(caseid_16)), table(orig_id==caseid_16,exclude=c()))
+## Notice the in general orig_id==caseid_nov for the first survey and
+## orig_id==caseid_dec for the december survey. Survey 7 is irrelevant here.
+with(dat5 %>% filter(survey==5 & !is.na(caseid_nov)), table(orig_id==caseid_nov,exclude=c()))
+with(dat5 %>% filter(survey==8 & !is.na(caseid_dec)), table(orig_id==caseid_dec,exclude=c()))
+with(dat5 %>% filter(survey==7 & !is.na(caseid_nov)), table(orig_id==caseid_dec,exclude=c()))
+with(dat5 %>% filter(survey==7 & !is.na(caseid_dec)), table(orig_id==caseid_dec,exclude=c()))
 
-## And neither are used for survey=7
-with(dat7,table(survey,is.na(caseid_15)))
-with(dat7,table(survey,is.na(caseid_16)))
+## Notice that we have 78 people in survey 5 who have orig_ids that match the
+## csv and 176 people in survey 8 who have orig_ids that match the csv.
+with(dat5, table(some_match,which_caseid,exclude=c()))
 
-## The question is whether orig_id is caseid_16 in survey=5 or caseid_15 in
-## survey=8
-with(dat7 %>% filter(survey==5 & !is.na(caseid_16)), orig_id %in% caseid_16)
-with(dat7 %>% filter(survey==5 & !is.na(caseid_16)), intersect(orig_id,caseid_16))
+## And we have 141 people who have both a nov and a dec id.
+table( apply(dat5[,c("caseid_nov","caseid_dec"),],1,function(x){ all(!is.na(x)) }))
 
-with(dat7 %>% filter(survey==8 & !is.na(caseid_15)), orig_id %in% caseid_15)
-with(dat7 %>% filter(survey==8 & !is.na(caseid_15)), intersect(orig_id,caseid_15))
+
+## So here we have two people:
+test_dat3 <- dat5 %>% filter(orig_id %in% c(1264497677, 1297706273))
+## if either of them were placed into another pair, we'd see their orig_id match
+## either caseid_nov or caseid_dec for the other pair (and other survey). Here
+## we have one person from survey 5 and the other person from survey 8.
+
+## Here we see that the orig_ids only match a different case for their own row.
+## So, neither of these were repeated across pairs.
+test_dat3[test_dat3$orig_id %in% dat5$caseid_nov,]
+test_dat3[test_dat3$orig_id %in% dat5$caseid_dec,]
+
+
+## So, looking **across** surveys for matches between orig_id and caseid_nov or
+## caseid_dec.
+
+## Any orig_ids match another caseid_dec in survey 5? no
+with(dat5 %>% filter(survey==5 & !is.na(caseid_dec)), table(orig_id %in% caseid_dec,exclude=c()))
+## Any orig_ids match another caseid_nov in survey 8? no
+with(dat5 %>% filter(survey==8 & !is.na(caseid_nov)), table(orig_id %in% caseid_nov,exclude=c()))
+
+## What we expect is that all of the orig_ids in survey 5 should match
+## caseid_nov
+with(dat5 %>% filter(survey==5 & !is.na(caseid_nov)), table(orig_id %in% caseid_nov,exclude=c()))
+## What we expect is that all of the orig_ids in survey 8 should match
+## caseid_dec
+with(dat5 %>% filter(survey==8 & !is.na(caseid_dec)), table(orig_id %in% caseid_dec,exclude=c()))
+
+
