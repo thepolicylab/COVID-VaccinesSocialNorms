@@ -7,7 +7,7 @@ library(tidyverse)
 # Relationship between perceptions of others' intentions and own intentions in full data
 source(here("src", "R", "000_constants_and_utils.R"))
 
-load(file = here(MATCHES_DIR, "datasets_study1.rda"), verbose = TRUE)
+load(file = here(MATCHES_DIR, "datasets_study1_first.rda"), verbose = TRUE)
 
 matched_dat_study1 <- dat3
 ## The data pre-matching --- no missing data on outcomes or perceptions. So not *all* the data, but the *valid* data
@@ -43,7 +43,7 @@ study1_raw_coefs <- c(fam = coef(lm_perc_global_fam)[2], neigh = coef(lm_perc_gl
 print(study1_raw_coefs)
 
 ### Conditional on matching (this repeats analyses from outcome_analysis_study1.R)
-load(file = here::here(MATCHES_DIR, "outcome_analysis_study1.rda"), verbose = TRUE)
+load(file = here::here(MATCHES_DIR, "outcome_analysis_study1_first.rda"), verbose = TRUE)
 
 # N
 nrow(matched_dat_study1)

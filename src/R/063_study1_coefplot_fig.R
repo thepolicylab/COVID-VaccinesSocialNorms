@@ -6,7 +6,7 @@ library(estimatr)
 
 source(here("src", "R", "000_constants_and_utils.R"))
 
-load(file = here(MATCHES_DIR, "outcome_analysis_study1.rda"))
+load(file = here(MATCHES_DIR, "outcome_analysis_study1_first.rda"))
 
 lm_res_lst <- lapply(ls(patt = "lm_perc|lm_test|lm_mask"), function(lmnm) {
   res <- tidy(get(lmnm))

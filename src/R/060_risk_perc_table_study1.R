@@ -1,12 +1,17 @@
 ## Make a table showing how risk perceptions (risk of COVID itself, risk of
 ## vaccine complications) relate to both other perceptions
-## and own intentions.
+## and own intentions. Since we do not adjust for risk perceptions in the
+## analysis, and since we assume risk perceptions matter for both outcomes and
+## perceptions, we can use this analysis to help interpret our sensitivity
+## analysis by calculating \lambda (effect of a covariate on treatment
+## assignment) and \delta (effect of a covariate on outcomes) for a known
+## potential confounder.
 
 library(here)
 library(tidyverse)
 library(flextable)
 source(here("src", "R", "000_constants_and_utils.R"))
-load(file = here::here(MATCHES_DIR, "outcome_analysis_study1.rda"))
+load(file = here::here(MATCHES_DIR, "outcome_analysis_study1_first.rda"))
 
 set_flextable_defaults(digits = 2)
 
@@ -75,5 +80,7 @@ save_as_docx(
   path = here(OUTPUT_DIR, "vaxrisk_inv_res_study1.docx")
 )
 
+save(risk_res_df,vaxrisk_res_df,vaxrisk_inv_res_df,here(MATCHES_DIR,"risk_perc_study1.rda")
 save_as_image(vaxrisk_inv_res_study1, path = here(FIGURES_DIR, "vaxrisk_inv_res_study1.png"), webshot = "webshot")
 save_as_image(vaxrisk_res_study1, path = here(FIGURES_DIR, "vaxrisk_res_study1.png"), webshot = "webshot")
+

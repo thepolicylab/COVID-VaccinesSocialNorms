@@ -13,11 +13,8 @@ output:
 
 ## The Design
 
-This file reruns our principle study from `results_study1_first.Rmd` utilizing all responses.
-That is, someone who answered our survey twice will be counted for two responses in this
-analysis. Notably, there are a very small number of instances where this results in the
-same person being matched to themselves later in time. See `src/R/999_find_duplicate_ids.R`
-for more information. This analysis is included for the sake of robustness.
+This file reruns our principle study from `results_study1_first.Rmd` utilizing _last in time_ responses. You'll find that the results are very similar to our
+principal analyses. They are included as a robustness check.
 
 We created a research design where pairs of survey respondents were created so as to be nearly identical on ideology. These pairs were also created so that the overall research design compared favorably with a pair-randomized experiment and otherwise produced extremely homogenous comparisons in terms of age, education, gender, race, partisanship, family income, and missingness on family income.
 
@@ -36,8 +33,8 @@ library(coin)
 library(sensemakr)
 library(sensitivitymult)
 
-load(file = here(MATCHES_DIR, "dat_plus_matches_study1.rda"), verbose = TRUE)
-load(file = here(MATCHES_DIR, "outcome_analysis_study1.rda"))
+load(file = here(MATCHES_DIR, "dat_plus_matches_study1_last.rda"), verbose = TRUE)
+load(file = here(MATCHES_DIR, "outcome_analysis_study1_last.rda"))
 ```
 
 Our design consists of `r nrow(dat3)` respondents from surveys 5--8 placed into pairs that were required to be the same on partisanship and survey. Is this a good research design for our question? Our main goal is to break the relationship between perceptions and potential confounders within pair --- that is, we aim to create pairs such that the person who, say, perceives more of their family wearing masks is no more or less likely to be the older member of the pair (or the democrat in the pair, or the more well-educated member of the pair, etc..). Within pair comparisons of perceptions in such a design then cannot be said to be confounded by the variables that we balanced.
@@ -50,7 +47,7 @@ First, we show balance on average. The following table shows that the pairs have
 kable(tab[-nrow(tab), ])
 ```
 
-What about within-pair differences? The following table tells us that across the `r nrow(dat3)/2` pairs, half differ by less than 1 point on the 5 point ideology scale, less than 1 point on the 6 point education scale, less than 3 years of age,  and more than half of the pairs were identical in gender and race. All pairs were identical in terms of the survey (since the surveys were fielded at different times). The worse differences we see are 2 points difference in ideology (for 10% of pairs) and less than 10% of pairs differed by as much as 5 years of age. From a substantive point of few, we suspect that these are quite small differences in substantive terms, and again, suggest that we have created a research design that limits the confounding effects of covariates on our targetted relationship.
+What about within-pair differences? The following table summarizes the differences within pairs.
 
 ```{r withinpairdiffs}
 

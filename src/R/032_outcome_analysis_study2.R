@@ -8,6 +8,7 @@ library(coin)
 library(estimatr)
 library(SensitivityCaseControl)
 library(RItools)
+library(haven)
 
 source(here("src", "R", "000_constants_and_utils.R"))
 
@@ -270,3 +271,6 @@ chisq.test(vaxrisk_inv_intention_or$data)
 chisq.test(vaxrisk_intention_or$data)
 
 save(list = c("dat5", "xbres", "risk_res", "vaxrisk_res", "vaxrisk_inv_res", ls(patt = "lm")), file = here::here(MATCHES_DIR, "outcome_analysis_study2.rda"))
+
+write_csv(dat5, file = here::here(DATA_DIR, "outcome_analysis_study2_data.csv"))
+write_sav(dat5, path = here::here(DATA_DIR, "outcome_analysis_study2_data.sav"))

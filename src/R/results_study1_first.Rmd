@@ -13,13 +13,11 @@ output:
 
 ## The Design
 
-This file reruns our principle study from `results_study1_first.Rmd` utilizing all responses.
-That is, someone who answered our survey twice will be counted for two responses in this
-analysis. Notably, there are a very small number of instances where this results in the
-same person being matched to themselves later in time. See `src/R/999_find_duplicate_ids.R`
-for more information. This analysis is included for the sake of robustness.
+We made a research design where pairs of survey respondents were created so as to be nearly identical on ideology. These pairs were also created so that the overall research design compared favorably with a pair-randomized experiment and otherwise produced extremely homogeneous comparisons in terms of age, education, gender, race, partisanship, family income, and missingness on family income.
 
-We created a research design where pairs of survey respondents were created so as to be nearly identical on ideology. These pairs were also created so that the overall research design compared favorably with a pair-randomized experiment and otherwise produced extremely homogenous comparisons in terms of age, education, gender, race, partisanship, family income, and missingness on family income.
+Because some of the same respondents were repeated between the November and
+December surveys, we kept only the first response for use in this file, which
+represents our primary analysis.
 
 ```{r}
 library(here)
@@ -36,8 +34,10 @@ library(coin)
 library(sensemakr)
 library(sensitivitymult)
 
-load(file = here(MATCHES_DIR, "dat_plus_matches_study1.rda"), verbose = TRUE)
-load(file = here(MATCHES_DIR, "outcome_analysis_study1.rda"))
+load(file = here(MATCHES_DIR, "dat_plus_matches_study1_first.rda"), verbose = TRUE)
+dat3_1 <- dat3
+load(file = here(MATCHES_DIR, "outcome_analysis_study1_first.rda"),verbose=TRUE)
+stopifnot(nrow(dat3)==nrow(dat3_1))
 ```
 
 Our design consists of `r nrow(dat3)` respondents from surveys 5--8 placed into pairs that were required to be the same on partisanship and survey. Is this a good research design for our question? Our main goal is to break the relationship between perceptions and potential confounders within pair --- that is, we aim to create pairs such that the person who, say, perceives more of their family wearing masks is no more or less likely to be the older member of the pair (or the democrat in the pair, or the more well-educated member of the pair, etc..). Within pair comparisons of perceptions in such a design then cannot be said to be confounded by the variables that we balanced.
@@ -47,21 +47,27 @@ We present a few pieces of information about our design here.
 First, we show balance on average. The following table shows that the pairs have nearly the same mean values on the key covariates that we aim to balance.
 
 ```{r simpletab}
-kable(tab[-nrow(tab), ])
+kable(tab[order(tab[,"Diffs"]),])
 ```
 
-What about within-pair differences? The following table tells us that across the `r nrow(dat3)/2` pairs, half differ by less than 1 point on the 5 point ideology scale, less than 1 point on the 6 point education scale, less than 3 years of age,  and more than half of the pairs were identical in gender and race. All pairs were identical in terms of the survey (since the surveys were fielded at different times). The worse differences we see are 2 points difference in ideology (for 10% of pairs) and less than 10% of pairs differed by as much as 5 years of age. From a substantive point of few, we suspect that these are quite small differences in substantive terms, and again, suggest that we have created a research design that limits the confounding effects of covariates on our targetted relationship.
-
-```{r withinpairdiffs}
-
+```{r make_withinpairdiffs}
 pd_means <- sapply(pair_diffs, mean, na.rm = TRUE)
 pd_quants <- sapply(pair_diffs, function(x) {
   quantile(abs(x), probs = c(0, .1, .25, .5, .75, .9, 1), na.rm = TRUE)
 })
 
-pd_tab <- rbind(pd_quants, pd_means)
+pd_tab <- as.data.frame(rbind(pd_quants, pd_means))[,-1]
+pd_tab$quantity <- c(row.names(pd_quants),"mean_diff")
+pd_tab <- relocate(pd_tab,quantity)
 
-kableExtra::kable(pd_tab[, -c(1, 9)], digits = 3)
+```
+
+What about within-pair differences? The following table summarizes the differences within pairs. For example, it tells us that across the `r nrow(dat3)/2` pairs, half differ by less than `r pd_tab["50%","ideo"]` points on the 5 point ideology scale, less than `r pd_tab["50%","educ"]` point on the 6 point education scale, less than `r pd_tab["50%","age"]` years of age. When the value for the median difference (the row labeled `50%`) is 0, this means that more than half of the pairs were identical on that variable. All pairs were identical in terms of the survey (since the surveys were fielded at different times). The worse differences we see are `r pd_tab["90%","ideo"]` points difference in ideology (for 10% of pairs) and less than 10% of pairs differed by as much as `r pd_tab["90%","age"]` years of age. We judge that these are quite small differences in substantive terms, and again, suggest that we have created a research design that limits the confounding effects of covariates on our targeted relationship.
+
+```{r show_withinpairdiffs}
+pd_tab
+## No need to show that pairs tend to differ on average perceptions --- that is what we want but doesn't have to do with evaluating the matches
+kableExtra::kable(pd_tab %>% select(-percdiff), digits = 2)
 ```
 
 As a final check, we compare our design to an established standard: a pair-randomized experiment. If we were to randomize which member of a pair perceived more versus less mask wearing in their social network, we would expect no systematic relationships between perceptions and these covariates within pairs --- across many covariates, we would see some relationships, but if we were really to randomize, we would know exactly the distribution that these differences would take. This kind of firm knowledge of a standard for an unconfounded design suggests that we compare our non-randomized design to the equivalent randomized design in the process of arguing in favor of the design. Moreover @hansenbowers2008 showed that a single test can summarize the relationship between many covariates and a randomized intervention --- thus allowing us to avoid the multiple comparisons problem of looking at many different covariate tests.  That result for this design provides us with p=`r round(xbres$overall$p,2)` for the test of the hypothesis that the covariate-to-perception relationship is what we would observe in an experiment: that is, we have no strong argument against that null in this case. The subsequent table summarizes the variable-by-variable results. Again, we see that the person who is ranked as perceiving more positive health behaviors is no more or less likely to be older, etc.. That is, those covariates cannot strongly confound any comparisons we make within these pairs.
@@ -105,7 +111,7 @@ lm_perc_city
 lm_perc_state
 ```
 
-Notice the pattern: family predicts more strongly than neighborhood, and in turn neighborhood than city, and city than state. Could we see this by chance? In fact, we have fairly strong evidence against arguments that this pattern of effects increasing with more personal relationships are just from chance. For example, using a seemingly unrelated regression framework, we tested hypotheses of equality among the coefficients shown above
+Notice the pattern: family predicts more strongly than neighborhood, and in turn neighborhood than city, and city than state. Could we see this by chance? We used a seemingly unrelated regression framework to test hypotheses of equality among the coefficients shown above:
 
 ```{r}
 test_fam_vs_bigger
@@ -114,17 +120,24 @@ test_city_vs_bigger
 ```
 
 
-The social perceptions of the family to intentions relationship is not restricted to vaccination intentions. It also works for mask wearing and testing.
+The effects of social perceptions of mask wearing and testing on those
+intentions.
 
 ```{r masktestingintentions}
-lm_mask_fam
-lm_test_fam
+summary(lm_mask_fam)
+summary(lm_test_fam)
 ```
 
 
 # Sensitivity Analysis
 
-This study was not randomized, but we are making statistical inferences as if it were --- as if perceptions were randomly assigned within these pairs. We know that we have some biases here, but are limited in regards our data. Although we have adjusted for some of the largest drivers of perceptions, we have not managed to control them all. How large of an unobserved effect on perceptions have to be in order to over turn our results? We present two modes of sensitivity analysis here.
+This study was not randomized, but we are making statistical inferences as if it
+were --- as if perceptions were randomly assigned within these pairs. We know
+that we have some biases here, but are limited in regards our data. Although we
+have adjusted for some of the largest drivers of perceptions, we have not
+managed to control them all. How large of an unobserved effect on perceptions
+have to be in order to over turn our results? We present two modes of
+sensitivity analysis here.
 
 ## Hazlett and Cinelli
 
@@ -148,8 +161,7 @@ sens_perc_fam
 ```
 
 So, we would need some covariates that are unrelated the variables included in
-the pairing that would explain more than `r
-round(100*sens_perc_fam$sensitivity_stats$rv_qa,1)`% of the variation in
+the pairing that would explain more than `r round(100*sens_perc_fam$sensitivity_stats$rv_qa,1)`% of the variation in
 **both** the outcome **and** perceptions in order for our statistical tests to
 not-reject the null of no effects.
 
@@ -224,7 +236,7 @@ lm_perc_fam_rank ## notice basically same
 sens_perc_fam_G <- uniroot(f = find_gamma_lim, y = "q1", z = "q60_1a_rank", dat = dat3, lower = 1, upper = 20)
 ## Here is the Gamma value: the covariate has to cause the person to be 4 times more likely to be the higher perceiver within the same pair
 sens_perc_fam_G$root
-## Showing the the pvalue is .0501 in this case
+## Showing the the p value is .0501 in this case
 find_gamma_lim(g = sens_perc_fam_G$root, y = "q1", z = "q60_1a_rank", dat = dat3, return = "all")$pval
 
 
@@ -257,10 +269,19 @@ amps <- lapply(gamma_vals, function(theg) {
 names(amps) <- names(gamma_vals)
 
 amps
+
+
+amps_min <- sapply(amps[!is.na(amps)], function(mat) {
+  mat[2, ]
+})
+## We are not looking at Independents because they are to heterogeneous
+## So only consider q60_1 to 6 (not 7).
+## The 4a result arises from using ranks (p=.08). So excluding that one too.
+amps_min[, c("q60_1a_rank", "q60_2a_rank", "q60_3a_rank", "q60_4a_rank")]
+
 ```
 
-The p-value that we see for a given $\Gamma$ (like `r
-gamma_vals[[1]]`)  can be produced from an unobserved covariate that
+The p-value that we see for a given $\Gamma$ (like `r gamma_vals[[1]]`)  can be produced from an unobserved covariate that
 increases the treatment odds (within all pairs) by lambda and
 increases the odds of a positive pair difference in outcomes by
 delta.
@@ -268,7 +289,7 @@ delta.
 ## Auxiliary analyses
 
 What if, in every pair, the person who reports that she perceives more
-vaccination support among her family and friends, neighborhors, and people in
+vaccination support among her family and friends, neighbors, and people in
 her city and state does so because she *hopes* that they will be vaccinated ---
 that is, she herself believes vaccination is good, so she hopes that those
 close to her will be vaccinated. This kind of wishful thinking or imagining a
@@ -276,14 +297,14 @@ consensus almost certainly does not occur in *every* pair, but yet, we wonder
 in how many pairs we might see this phenomenon.  Notice that saying "no one
 will vaccinate" for all levels and saying "everyone will vaccinate" at all
 levels both indicates a kind of wishful thinking (either believing that
-vaccination is bad and no one should do it, and believeing that it is good that
+vaccination is bad and no one should do it, and believing that it is good that
 everyone should do it.) How many people exhibit this kind of response pattern?
-Do people with these response patterns tend to also report either a stronglya
+Do people with these response patterns tend to also report either a strongly
 negative or positive own intention?  If few do, and this pattern does not
 strongly predict own intention, then we have less concern about wishful
 thinking driving our results.
 
-Furthermore, we should note that this kind of false consensensus or reverse
+Furthermore, we should note that this kind of false consensus or reverse
 causality would not necessarily imply the pattern of results that we see:
 someone who is not actually reporting perceptions but hopes or rationalizations
 is likely to project those to all groups, and not first to family and friends
@@ -292,7 +313,7 @@ distant and diffuse.
 
 We see here that very few people show this response pattern, too few to
 overturn our results (considering the sensitivity analysis above). Also, notice
-that those having this pattern are not perfectly homogenous in their own
+that those having this pattern are not perfectly homogeneous in their own
 intentions --- those reporting that all will definitely be vaccinated at all
 levels are very likely to say that they will be vaccinated, and the converse is
 also true, but this is not a perfect relationship.

@@ -2,14 +2,17 @@
 
 library(here)
 source(here("src", "R", "000_constants_and_utils.R"))
-source(here("src/R", "rmd_setup.R"))
+source(here("src/R", "001_rmd_setup.R"))
 library(tidyverse)
 library(estimatr)
 library(flextable)
 set_flextable_defaults(digits = 2)
 
-load(file = here(MATCHES_DIR, "dat_plus_matches_study1.rda"), verbose = TRUE)
-load(file = here(MATCHES_DIR, "datasets_study1.rda"), verbose = TRUE)
+load(file = here(MATCHES_DIR, "dat_plus_matches_study1_first.rda"), verbose = TRUE)
+dat3_1 <- dat3
+load(file = here(MATCHES_DIR, "datasets_study1_first.rda"), verbose = TRUE)
+stopifnot(all.equal(dat3_1,dat3))
+rm(dat3_1)
 
 matched_dat_study1 <- dat3
 xbres_study1 <- xbres

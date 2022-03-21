@@ -11,9 +11,9 @@ __pycache__
 .*.swp
 .Rproj.user
 
+# Mac cruft
+.DS_Store
+.Rhistory
+
 # Computed data
 data/calculated
-
-# OS cruft
-build/.DS_Store
-data/.DS_Store
