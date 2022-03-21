@@ -27,6 +27,7 @@ Once these are installed, you can install most dependencies with
 
 ```bash
 Rscript -e 'renv::restore()'
+webshot::install_phantomjs()
 ```
 
 ### A Note on Gurobi

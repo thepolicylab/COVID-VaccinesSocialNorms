@@ -80,7 +80,7 @@ save_as_docx(
   path = here(OUTPUT_DIR, "vaxrisk_inv_res_study1.docx")
 )
 
-save(risk_res_df,vaxrisk_res_df,vaxrisk_inv_res_df,here(MATCHES_DIR,"risk_perc_study1.rda")
+save(risk_res_df,vaxrisk_res_df,vaxrisk_inv_res_df, file = here(MATCHES_DIR,"risk_perc_study1.rda"))
 save_as_image(vaxrisk_inv_res_study1, path = here(FIGURES_DIR, "vaxrisk_inv_res_study1.png"), webshot = "webshot")
 save_as_image(vaxrisk_res_study1, path = here(FIGURES_DIR, "vaxrisk_res_study1.png"), webshot = "webshot")
 
